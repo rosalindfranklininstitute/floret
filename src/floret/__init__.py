@@ -119,7 +119,6 @@ def generate_dose_symmetric_scan(angles: np.ndarray, symmetry: int = 0) -> np.nd
 
     # If symmetry is zero then do nothing
     if symmetry > 0:
-
         # Order angles around zero
         angles = np.array(sorted(angles, key=lambda x: abs(x)))
 
