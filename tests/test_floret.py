@@ -4,7 +4,6 @@ import numpy as np
 
 
 def test_generate_initial_angles():
-
     angles = floret.generate_initial_angles(0, -90, 90, 4.5, None)
     np.testing.assert_allclose(angles, np.arange(-90, 90, 4.5))
 
@@ -25,7 +24,6 @@ def test_generate_initial_angles():
 
 
 def test_shuffle_array():
-
     x = floret.shuffle_array(np.arange(11), 1)
     np.testing.assert_allclose(x, [0, 10, 1, 9, 2, 8, 3, 7, 4, 6, 5])
 
@@ -43,7 +41,6 @@ def test_shuffle_array():
 
 
 def test_generate_dose_symmetry_scan():
-
     angles = np.arange(-90, 90, 4.5)
 
     a0 = floret.generate_dose_symmetric_scan(angles, 0)
@@ -281,7 +278,6 @@ def test_generate_dose_symmetry_scan():
 
 
 def test_generate_scan():
-
     angles = floret.generate_scan(0, -90, 90, 4.5, None, 0)
     np.testing.assert_allclose(angles, np.arange(-90, 90, 4.5))
 
@@ -333,5 +329,4 @@ def test_generate_scan():
 
 
 def test_command_line():
-
     floret.command_line.main(["--tilt_angle_step=4.5"])
