@@ -203,8 +203,9 @@ def generate_scan(
     tilt_angle_max: float = 90,
     tilt_angle_step: float = None,
     num_tilt_angles: int = None,
-    symmetry: int = 0,
     mode: str = "symmetric",
+    symmetry: int = 0,
+    skipnum: int = 0,
 ) -> np.ndarray:
     """
     Generate the scan angles
@@ -216,11 +217,19 @@ def generate_scan(
         tilt_angle_step: The tilt angle step (degrees)
         num_tilt_angles: The number of tilt angles
         symmetry: The dose symmetric order
+        skipnum: The number of images to skip
 
     Returns:
         The tilt angles
 
     """
+
+    def get_skipnum(N, symmetry, skipnum):
+        if skipnum == 0:
+            if symmetry > 0:
+                skipnum = N // (2 ** (symmetry - 1))
+        return skipnum
+
     # Check the input
     assert symmetry >= 0
     assert mode in ["symmetric", "spiral", "swinging"]
@@ -234,13 +243,16 @@ def generate_scan(
         num_tilt_angles,
     )
 
+    # Get the number to skip
+    skipnum = get_skipnum(len(angles), symmetry, skipnum)
+
     # Reorder the angles into a dose symmetric scan
     if mode == "symmetric":
         angles = generate_dose_symmetric_scan(angles, symmetry, tilt_angle_zero)
     elif mode == "spiral":
-        angles = generate_spiral_scan(angles, symmetry)
+        angles = generate_spiral_scan(angles, skipnum)
     elif mode == "swinging":
-        angles = generate_swinging_scan(angles, symmetry)
+        angles = generate_swinging_scan(angles, skipnum)
     else:
         raise RuntimeError("Programmer Error")
 

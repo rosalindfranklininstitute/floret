@@ -74,18 +74,28 @@ def get_parser(parser: ArgumentParser = None) -> ArgumentParser:
         help="The number of tilt angles.",
     )
     parser.add_argument(
+        "--mode",
+        dest="mode",
+        choices=["spiral", "symmetric", "swinging"],
+        default="symmetric",
+        help="Do a symmetric, spiral or swinging scheme",
+    )
+
+    # Skipnum and symmetry are mutually exclusive
+    parameter_group = parser.add_mutually_exclusive_group()
+    parameter_group.add_argument(
         "--symmetry",
         dest="symmetry",
         type=int,
         default=0,
         help="The scan symmetry order.",
     )
-    parser.add_argument(
-        "--mode",
-        dest="mode",
-        choices=["spiral", "symmetric", "swinging"],
-        default="symmetric",
-        help="Do a symmetric, spiral or swinging scheme",
+    parameter_group.add_argument(
+        "--skipnum",
+        dest="skipnum",
+        type=int,
+        default=0,
+        help="The number of images to skip (sprial and swinging).",
     )
 
     # Return the parser
@@ -108,8 +118,9 @@ def main_impl(args):
         tilt_angle_max=args.tilt_angle_max,
         tilt_angle_step=args.tilt_angle_step,
         num_tilt_angles=args.num_tilt_angles,
-        symmetry=args.symmetry,
         mode=args.mode,
+        symmetry=args.symmetry,
+        skipnum=args.skipnum,
     )
 
     # Print the angles
