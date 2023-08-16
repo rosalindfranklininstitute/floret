@@ -83,9 +83,9 @@ def get_parser(parser: ArgumentParser = None) -> ArgumentParser:
     parser.add_argument(
         "--mode",
         dest="mode",
-        choices=["spiral", "symmetric"],
+        choices=["spiral", "symmetric", "swinging"],
         default="symmetric",
-        help="Do a symmetric or spiral scheme",
+        help="Do a symmetric, spiral or swinging scheme",
     )
 
     # Return the parser

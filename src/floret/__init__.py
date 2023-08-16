@@ -162,6 +162,41 @@ def generate_spiral_scan(angles: np.ndarray, n: int = 0) -> np.ndarray:
     return angles
 
 
+def generate_swinging_scan(angles: np.ndarray, n: int = 0) -> np.ndarray:
+    """
+    Generate a swinging scan
+
+    Args:
+        angles: The array of continious tilt angles
+        n: The number of swings
+
+    Returns:
+        The tilt angles
+
+    """
+
+    # Flip odd series
+    def flip_or_not(x, i):
+        if i % 2 == 0:
+            return x[i // 2]
+        else:
+            return np.flip(x[len(x) - i // 2 - 1])
+
+    # Only do anything if n > 1
+    if n > 1:
+        # Ensure angles are in sorted order
+        angles = np.array(sorted(angles))
+
+        # Split the angles into n interleaved series
+        splits = [angles[i::n] for i in range(n)]
+
+        # Order the angles to swing back and forward
+        angles = np.concatenate([flip_or_not(splits, i) for i in range(n)])
+
+    # Return the angles
+    return angles
+
+
 def generate_scan(
     tilt_angle_zero: float = 0,
     tilt_angle_min: float = -90,
@@ -188,7 +223,7 @@ def generate_scan(
     """
     # Check the input
     assert symmetry >= 0
-    assert mode in ["symmetric", "spiral"]
+    assert mode in ["symmetric", "spiral", "swinging"]
 
     # Generate the set of initial tilt angles
     angles = generate_initial_angles(
@@ -204,6 +239,8 @@ def generate_scan(
         angles = generate_dose_symmetric_scan(angles, symmetry, tilt_angle_zero)
     elif mode == "spiral":
         angles = generate_spiral_scan(angles, symmetry)
+    elif mode == "swinging":
+        angles = generate_swinging_scan(angles, symmetry)
     else:
         raise RuntimeError("Programmer Error")
 
