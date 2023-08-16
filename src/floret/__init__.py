@@ -97,7 +97,9 @@ def shuffle_array(x: np.ndarray, n: int) -> np.ndarray:
     return c
 
 
-def generate_dose_symmetric_scan(angles: np.ndarray, symmetry: int = 0) -> np.ndarray:
+def generate_dose_symmetric_scan(
+    angles: np.ndarray, symmetry: int = 0, tilt_angle_zero: float = 0
+) -> np.ndarray:
     """
     Reorder the tilt angles for the desired symmetry
 
@@ -111,6 +113,7 @@ def generate_dose_symmetric_scan(angles: np.ndarray, symmetry: int = 0) -> np.nd
     Args:
         angles: The array of continious tilt angles
         symmetry: The dose symmetric order
+        tilt_angle_zero: The zero tilt angle
 
     Returns:
         The tilt angles
@@ -126,6 +129,35 @@ def generate_dose_symmetric_scan(angles: np.ndarray, symmetry: int = 0) -> np.nd
         for i in range(symmetry - 1):
             angles = shuffle_array(angles, 2**i)
 
+        # Recentre angles around the zero angle
+        angles += tilt_angle_zero
+        angles = (angles + 90) % 180 - 90
+
+    # Return the angles
+    return angles
+
+
+def generate_spiral_scan(angles: np.ndarray, n: int = 0) -> np.ndarray:
+    """
+    Generate a spiral scan
+
+    Args:
+        angles: The array of continious tilt angles
+        n: The number of spirals
+
+    Returns:
+        The tilt angles
+
+    """
+
+    # Only do anything if n > 1
+    if n > 1:
+        # Ensure angles are in sorted order
+        angles = np.array(sorted(angles))
+
+        # Do n scans through the angles
+        angles = np.concatenate([angles[i::n] for i in range(n)])
+
     # Return the angles
     return angles
 
@@ -137,6 +169,7 @@ def generate_scan(
     tilt_angle_step: float = None,
     num_tilt_angles: int = None,
     symmetry: int = 0,
+    mode: str = "symmetric",
 ) -> np.ndarray:
     """
     Generate the scan angles
@@ -155,6 +188,7 @@ def generate_scan(
     """
     # Check the input
     assert symmetry >= 0
+    assert mode in ["symmetric", "spiral"]
 
     # Generate the set of initial tilt angles
     angles = generate_initial_angles(
@@ -166,7 +200,12 @@ def generate_scan(
     )
 
     # Reorder the angles into a dose symmetric scan
-    angles = generate_dose_symmetric_scan(angles, symmetry)
+    if mode == "symmetric":
+        angles = generate_dose_symmetric_scan(angles, symmetry, tilt_angle_zero)
+    elif mode == "spiral":
+        angles = generate_spiral_scan(angles, symmetry)
+    else:
+        raise RuntimeError("Programmer Error")
 
     # Return the angles
     return angles

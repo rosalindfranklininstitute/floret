@@ -80,6 +80,13 @@ def get_parser(parser: ArgumentParser = None) -> ArgumentParser:
         default=0,
         help="The scan symmetry order.",
     )
+    parser.add_argument(
+        "--mode",
+        dest="mode",
+        choices=["spiral", "symmetric"],
+        default="symmetric",
+        help="Do a symmetric or spiral scheme",
+    )
 
     # Return the parser
     return parser
@@ -102,6 +109,7 @@ def main_impl(args):
         tilt_angle_step=args.tilt_angle_step,
         num_tilt_angles=args.num_tilt_angles,
         symmetry=args.symmetry,
+        mode=args.mode,
     )
 
     # Print the angles
