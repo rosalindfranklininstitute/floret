@@ -359,6 +359,16 @@ def test_generate_scan():
     a5 = floret.generate_scan(0, -90, 90, 4.5, symmetry=5)
     np.testing.assert_allclose(a5, b5)
 
+    a0 = floret.generate_scan(0, -90, 90, 4.5, mode="spiral", skipnum=4)
+    b0 = np.concatenate([angles[0::4], angles[1::4], angles[2::4], angles[3::4]])
+    np.testing.assert_allclose(a0, b0)
+
+    a0 = floret.generate_scan(0, -90, 90, 4.5, mode="swinging", skipnum=4)
+    b0 = np.concatenate(
+        [angles[0::4], np.flip(angles[3::4]), angles[1::4], np.flip(angles[2::4])]
+    )
+    np.testing.assert_allclose(a0, b0)
+
 
 def test_command_line():
     floret.command_line.main(["--tilt_angle_step=4.5"])
