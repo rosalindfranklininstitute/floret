@@ -277,8 +277,40 @@ def test_generate_dose_symmetry_scan():
     np.testing.assert_allclose(a5, b5)
 
 
+def test_spiral_scan():
+    angles = np.arange(-90, 90, 4.5)
+
+    a0 = floret.generate_spiral_scan(angles, 1)
+    np.testing.assert_allclose(a0, angles)
+
+    a0 = floret.generate_spiral_scan(angles, 2)
+    b0 = np.concatenate([angles[0::2], angles[1::2]])
+    np.testing.assert_allclose(a0, b0)
+
+    a0 = floret.generate_spiral_scan(angles, 4)
+    b0 = np.concatenate([angles[0::4], angles[1::4], angles[2::4], angles[3::4]])
+    np.testing.assert_allclose(a0, b0)
+
+
+def test_swinging_scan():
+    angles = np.arange(-90, 90, 4.5)
+
+    a0 = floret.generate_swinging_scan(angles, 1)
+    np.testing.assert_allclose(a0, angles)
+
+    a0 = floret.generate_swinging_scan(angles, 2)
+    b0 = np.concatenate([angles[0::2], np.flip(angles[1::2])])
+    np.testing.assert_allclose(a0, b0)
+
+    a0 = floret.generate_swinging_scan(angles, 4)
+    b0 = np.concatenate(
+        [angles[0::4], np.flip(angles[3::4]), angles[1::4], np.flip(angles[2::4])]
+    )
+    np.testing.assert_allclose(a0, b0)
+
+
 def test_generate_scan():
-    angles = floret.generate_scan(0, -90, 90, 4.5, None, 0)
+    angles = floret.generate_scan(0, -90, 90, 4.5, symmetry=0)
     np.testing.assert_allclose(angles, np.arange(-90, 90, 4.5))
 
     b5 = [
@@ -324,7 +356,7 @@ def test_generate_scan():
         27.0,
     ]
 
-    a5 = floret.generate_scan(0, -90, 90, 4.5, None, 5)
+    a5 = floret.generate_scan(0, -90, 90, 4.5, symmetry=5)
     np.testing.assert_allclose(a5, b5)
 
 
