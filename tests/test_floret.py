@@ -353,6 +353,12 @@ def test_generate_final_order():
         positions, np.stack([np.zeros(10), np.ones(10)]).T.flatten()
     )
 
+    angles, positions = floret.generate_final_order(
+        a1, p1, order_by="position", interleave_positions=False
+    )
+
+    np.testing.assert_allclose(positions.flatten(), p1.flatten())
+
 
 def test_generate_scan():
     positions, angles = floret.generate_scan(0, -90, 90, 4.5, symmetry=0)
