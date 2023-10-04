@@ -36,19 +36,31 @@ def generate_initial_angles(
     elif tilt_angle_step is not None and num_tilt_angles is not None:
         raise RuntimeError("Cannot set both tilt_angle_step and num_tilt_angles")
     elif tilt_angle_step is not None:
+        # Compute the maximum tilt around the zero tilt
+        max_tilt = min(
+            tilt_angle_zero - tilt_angle_min, tilt_angle_max - tilt_angle_zero
+        )
+
+        # Compute the minimum tilt angle
         tilt_angle_min = tilt_angle_zero - tilt_angle_step * np.floor(
-            (tilt_angle_zero - tilt_angle_min) / tilt_angle_step
+            (max_tilt) / tilt_angle_step
         )
+
+        # Compute the maximum tilt angle
         tilt_angle_max = tilt_angle_zero + tilt_angle_step * np.ceil(
-            (tilt_angle_max - tilt_angle_zero) / tilt_angle_step
+            (max_tilt) / tilt_angle_step
         )
+
     elif num_tilt_angles is not None:
         tilt_angle_step = (tilt_angle_max - tilt_angle_min) / num_tilt_angles
     else:
         raise RuntimeError("Programmer Error")
 
     # Generate the angles
+    assert tilt_angle_min < tilt_angle_max
+    assert tilt_angle_step > 0
     angles = np.arange(tilt_angle_min, tilt_angle_max, tilt_angle_step)
+    angles = np.sort(angles)
     assert angles.min() >= -90
     assert angles.max() < 90
 
@@ -98,7 +110,7 @@ def shuffle_array(x: np.ndarray, n: int) -> np.ndarray:
 
 
 def generate_dose_symmetric_scan(
-    angles: np.ndarray, symmetry: int = 0, tilt_angle_zero: float = 0
+    angles: np.array, symmetry: int = 0, tilt_angle_zero: float = 0
 ) -> np.ndarray:
     """
     Reorder the tilt angles for the desired symmetry
@@ -120,21 +132,20 @@ def generate_dose_symmetric_scan(
 
     """
 
+    # Ensure angles are in sorted order
+    order = np.arange(len(angles))
+
     # If symmetry is zero then do nothing
     if symmetry > 0:
         # Order angles around zero
-        angles = np.array(sorted(angles, key=lambda x: abs(x)))
+        order = np.array(sorted(order, key=lambda x: abs(angles[x] - tilt_angle_zero)))
 
         # Shuffle the array n-1 times
         for i in range(symmetry - 1):
-            angles = shuffle_array(angles, 2**i)
-
-        # Recentre angles around the zero angle
-        angles += tilt_angle_zero
-        angles = (angles + 90) % 180 - 90
+            order = shuffle_array(order, 2**i)
 
     # Return the angles
-    return angles
+    return order
 
 
 def generate_spiral_scan(angles: np.ndarray, n: int = 0) -> np.ndarray:
@@ -149,17 +160,16 @@ def generate_spiral_scan(angles: np.ndarray, n: int = 0) -> np.ndarray:
         The tilt angles
 
     """
+    # Ensure angles are in sorted order
+    order = np.arange(len(angles))
 
     # Only do anything if n > 1
     if n > 1:
-        # Ensure angles are in sorted order
-        angles = np.array(sorted(angles))
-
         # Do n scans through the angles
-        angles = np.concatenate([angles[i::n] for i in range(n)])
+        order = np.concatenate([order[i::n] for i in range(n)])
 
     # Return the angles
-    return angles
+    return order
 
 
 def generate_swinging_scan(angles: np.ndarray, n: int = 0) -> np.ndarray:
@@ -182,19 +192,113 @@ def generate_swinging_scan(angles: np.ndarray, n: int = 0) -> np.ndarray:
         else:
             return np.flip(x[len(x) - i // 2 - 1])
 
+    # Ensure angles are in sorted order
+    order = np.arange(len(angles))
+
     # Only do anything if n > 1
     if n > 1:
-        # Ensure angles are in sorted order
-        angles = np.array(sorted(angles))
-
         # Split the angles into n interleaved series
-        splits = [angles[i::n] for i in range(n)]
+        splits = [order[i::n] for i in range(n)]
 
         # Order the angles to swinging back and forward
-        angles = np.concatenate([flip_or_not(splits, i) for i in range(n)])
+        order = np.concatenate([flip_or_not(splits, i) for i in range(n)])
 
     # Return the angles
-    return angles
+    return order
+
+
+def generate_initial_positions(nhelix: int, nangles: int) -> np.ndarray:
+    """
+    Generate the initial positions
+
+    Args:
+        nhelix: The nhelix parameter defining the sub shifts in position
+        nangles: The number of angles to sample
+
+    Returns:
+        A position for each angle
+
+    """
+    assert nhelix > 0
+    assert nangles > 0
+    return np.array(
+        [
+            i / nhelix
+            for j in range(0, nangles, nhelix)
+            for i in range(min(nangles - j, nhelix))
+        ]
+    )
+
+
+def generate_shifted_positions(
+    angles: np.ndarray,
+    positions: np.ndarray,
+    position_min: int = 0,
+    position_max: int = 1,
+) -> tuple:
+    """
+    Generate the shifted positions
+
+    Args:
+        angles: The list of angles
+        positions: The list of positions
+        position_min: The minimum normalised position
+        position_max: The maximum normalised position
+
+    Returns:
+        A tuple with the list of angles and list of positions
+
+    """
+    position_diff = position_max - position_min
+    assert position_diff > 0
+    positions = np.stack([positions + p for p in range(position_min, position_max)])
+    angles = np.tile(angles, (positions.shape[0], 1))
+    assert angles.shape == positions.shape
+    return angles, positions
+
+
+def generate_final_order(
+    angles: np.ndarray,
+    positions: np.ndarray,
+    order_by: str = "angle",
+    interleave_positions: bool = True,
+) -> tuple:
+    """
+    Generate the final order
+
+    If order_by=angle then for each angle, all positions are acquired.
+    If order_by=position then for each position, all angles are acquired.
+
+    If order_by=angle and interleave_positions=True then we skip adjacent positions
+    and collect angles twice. We do this because the beam is larger than the collection
+    area so adjacent positions will overlap.
+
+    Args:
+        angles: The list of angles
+        positions: The list of positions
+        order_by: Order acquisition by position or angle
+        interleave_positions: Interleave the positions
+
+    Returns:
+        A tuple with the list of angles and list of positions
+
+    """
+    # Swap order if desired and then flatten array
+    if order_by == "angle":
+        positions = positions.T
+        angles = angles.T
+
+        # Interleave positions by skipping one position if desired
+        if interleave_positions:
+            positions = np.concatenate([positions[:, i::2].flatten() for i in range(2)])
+            angles = np.concatenate([angles[:, i::2].flatten() for i in range(2)])
+
+    # Flatten the lists
+    angles = angles.flatten()
+    positions = positions.flatten()
+
+    # Return the final list of angles and positions
+    return angles, positions
 
 
 def generate_scan(
@@ -205,7 +309,12 @@ def generate_scan(
     num_tilt_angles: int = None,
     mode: str = "symmetric",
     symmetry: int = 0,
-    skipnum: int = 0,
+    stepnum: int = 1,
+    nhelix: int = 1,
+    position_min: int = 0,
+    position_max: int = 1,
+    order_by="angle",
+    interleave_positions=True,
 ) -> np.ndarray:
     """
     Generate the scan angles
@@ -217,22 +326,29 @@ def generate_scan(
         tilt_angle_step: The tilt angle step (degrees)
         num_tilt_angles: The number of tilt angles
         symmetry: The dose symmetric order
-        skipnum: The number of images to skip
+        stepnum: The number of images to step
+        nhelix: The nhelix parameter
+        position_min: The minimum normalised position
+        position_max: The maximum normalised position
+        order_by: Order by angle or position
+        interleave_positions: Skip and interleave adjacent positions if order_by=angle
 
     Returns:
         The tilt angles
 
     """
 
-    def get_skipnum(N, symmetry, skipnum):
-        if skipnum == 0:
+    def get_stepnum(N, symmetry, stepnum):
+        if stepnum == 0:
             if symmetry > 0:
-                skipnum = N // (2 ** (symmetry - 1))
-        return skipnum
+                stepnum = N // (2 ** (symmetry - 1))
+        return stepnum
 
     # Check the input
     assert symmetry >= 0
     assert mode in ["symmetric", "spiral", "swinging"]
+    assert nhelix >= 1
+    assert (position_max - position_min) >= 1
 
     # Generate the set of initial tilt angles
     angles = generate_initial_angles(
@@ -243,18 +359,35 @@ def generate_scan(
         num_tilt_angles,
     )
 
-    # Get the number to skip
-    skipnum = get_skipnum(len(angles), symmetry, skipnum)
+    # Assign a fractional position to each tilt angle for the n-helix
+    positions = generate_initial_positions(nhelix, len(angles))
+
+    # Get the number to step
+    stepnum = get_stepnum(len(angles), symmetry, stepnum)
 
     # Reorder the angles into a dose symmetric scan
     if mode == "symmetric":
-        angles = generate_dose_symmetric_scan(angles, symmetry, tilt_angle_zero)
+        order = generate_dose_symmetric_scan(angles, symmetry, angles[len(angles) // 2])
     elif mode == "spiral":
-        angles = generate_spiral_scan(angles, skipnum)
+        order = generate_spiral_scan(angles, stepnum)
     elif mode == "swinging":
-        angles = generate_swinging_scan(angles, skipnum)
+        order = generate_swinging_scan(angles, stepnum)
     else:
         raise RuntimeError("Programmer Error")
 
+    # Order the angles and positions
+    angles = angles[order]
+    positions = positions[order]
+
+    # Generate the beam shifted positions along the pillar
+    angles, positions = generate_shifted_positions(
+        angles, positions, position_min, position_max
+    )
+
+    # Swap order if desired and then flatten array
+    angles, positions = generate_final_order(
+        angles, positions, order_by, interleave_positions
+    )
+
     # Return the angles
-    return angles
+    return positions, angles

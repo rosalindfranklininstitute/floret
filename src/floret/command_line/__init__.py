@@ -74,11 +74,52 @@ def get_parser(parser: ArgumentParser = None) -> ArgumentParser:
         help="The number of tilt angles.",
     )
     parser.add_argument(
+        "--position_min",
+        dest="position_min",
+        type=int,
+        default=0,
+        help="The minimum normalised position.",
+    )
+    parser.add_argument(
+        "--position_max",
+        dest="position_max",
+        type=int,
+        default=1,
+        help="The maximum normalised position.",
+    )
+    parser.add_argument(
         "--mode",
         dest="mode",
         choices=["spiral", "symmetric", "swinging"],
         default="symmetric",
         help="Do a symmetric, spiral or swinging scheme",
+    )
+    parser.add_argument(
+        "--nhelix",
+        dest="nhelix",
+        type=int,
+        default=1,
+        help="The nhelix order.",
+    )
+    parser.add_argument(
+        "--order_by",
+        dest="order_by",
+        type=str,
+        default="angle",
+        choices=["angle", "position"],
+        help=" ".join(
+            [
+                "If order_by=position, then for each position, all angles are collected.",
+                "If order=angle, then for each angle all positions are collected",
+            ]
+        ),
+    )
+    parser.add_argument(
+        "--interleave_positions",
+        dest="interleave_positions",
+        type=bool,
+        default=True,
+        help="Skip adjacent positions and interleave if order_by=angle",
     )
 
     # Skipnum and symmetry are mutually exclusive
@@ -91,11 +132,11 @@ def get_parser(parser: ArgumentParser = None) -> ArgumentParser:
         help="The scan symmetry order.",
     )
     parameter_group.add_argument(
-        "--skipnum",
-        dest="skipnum",
+        "--stepnum",
+        dest="stepnum",
         type=int,
         default=0,
-        help="The number of images to skip (sprial and swinging).",
+        help="The number of images to step (sprial and swinging).",
     )
 
     # Return the parser
@@ -112,7 +153,7 @@ def main_impl(args):
     logging.basicConfig(level=logging.INFO, format="%(msg)s")
 
     # Generate scan angles
-    angles = floret.generate_scan(
+    positions, angles = floret.generate_scan(
         tilt_angle_zero=args.tilt_angle_zero,
         tilt_angle_min=args.tilt_angle_min,
         tilt_angle_max=args.tilt_angle_max,
@@ -120,12 +161,17 @@ def main_impl(args):
         num_tilt_angles=args.num_tilt_angles,
         mode=args.mode,
         symmetry=args.symmetry,
-        skipnum=args.skipnum,
+        stepnum=args.stepnum,
+        nhelix=args.nhelix,
+        position_min=args.position_min,
+        position_max=args.position_max,
+        order_by=args.order_by,
+        interleave_positions=args.interleave_positions,
     )
 
     # Print the angles
-    for a in angles:
-        logging.info(a)
+    for p, a in zip(positions, angles):
+        logging.info("%f, %f" % (p, a))
 
 
 def main(args: List[str] = None):
