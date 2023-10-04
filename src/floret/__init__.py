@@ -110,7 +110,7 @@ def shuffle_array(x: np.ndarray, n: int) -> np.ndarray:
 
 
 def generate_dose_symmetric_scan(
-    angles: np.array, symmetry: int = 0, tilt_angle_zero: float = 0
+    angles: np.ndarray, symmetry: int = 0, tilt_angle_zero: float = 0
 ) -> np.ndarray:
     """
     Reorder the tilt angles for the desired symmetry
@@ -315,7 +315,7 @@ def generate_scan(
     position_max: int = 1,
     order_by="angle",
     interleave_positions=True,
-) -> np.ndarray:
+) -> tuple:
     """
     Generate the scan angles
 
@@ -367,7 +367,9 @@ def generate_scan(
 
     # Reorder the angles into a dose symmetric scan
     if mode == "symmetric":
-        order = generate_dose_symmetric_scan(angles, symmetry, angles[len(angles) // 2])
+        order = generate_dose_symmetric_scan(
+            angles, symmetry, float(angles[len(angles) // 2])
+        )
     elif mode == "spiral":
         order = generate_spiral_scan(angles, stepnum)
     elif mode == "swinging":
